@@ -12,7 +12,7 @@ public:
 	cv::Point leftButtonClick(cv::Mat frame, cv::Point pt);
 	void rightButtonClick(cv::Mat frame, cv::Point pt, cv::Point leftClickPt);
 
-	cv::vector<cv::Rect> allmarkedAreaRect;
+	std::vector<cv::Rect> allmarkedAreaRect;
 
 private:
 	bool leftBeforeRight;

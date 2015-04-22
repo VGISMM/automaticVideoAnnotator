@@ -32,13 +32,12 @@ void MarkArea::rightButtonClick(cv::Mat frame, cv::Point pt, cv::Point leftClick
 		markedAreaRect.height = localHeight;
 
 		allmarkedAreaRect.push_back(markedAreaRect);
-
-		imshow("Main Window",frame);
 	}
 
-	else if (newKey == 'i')
+	else if (newKey == 'i' || newKey == 'z')
 	{
 		cv::rectangle(frame,cv::Point(leftClickX, leftClickY),cv::Point(rightClickX, rightClickY), cv::Scalar(0, 0, 0),1,1);
-		imshow("Main Window",frame);
+		
 	}
+	imshow("Main Window",frame);
 }

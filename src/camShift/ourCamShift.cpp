@@ -26,30 +26,35 @@ void ourCamShift::trackTheObject(cv::Mat currentFrame, cv::Mat previousFrame, cv
                                   cv::TermCriteria::EPS, 
                                   20, 0.01);
     camShiftRect = prevTrackingWindow;
-
     cv::CamShift(backProject, camShiftRect, criteria);
-
     //std::cout << "CAMSHIFT : " << camShiftRect << std::endl;
 
     meanshiftwindow = prevTrackingWindow;
     cv::meanShift(backProject,meanshiftwindow,criteria);
-
     //std::cout << "MEANSHIFT: " << meanshiftwindow << std::endl;
     
-
-    if ( (camShiftRect.width!= 0) && (camShiftRect.width < 70) && (camShiftRect.height < 70) )
+    if ( (camShiftRect.width > 0) && (camShiftRect.width < 30) && (camShiftRect.height < 30) && (camShiftRect.height > 0) )
     {
         boolColor = determineContainerContent(currentFrame, camShiftRect);
         findMaxSeedPoint(luvCurFrame,camShiftRect,boolColor);
         //std::cout << "CAMSHIFT" << std::endl;
+        ffCamShiftRect = camShiftRect;
+        findFloodFillRect(currentFrame,maxSeedPoint,false);
     }
-    else if ( (meanshiftwindow.width!= 0) && (meanshiftwindow.width < 70) && (meanshiftwindow.height < 70)){
+    else if ( (meanshiftwindow.width > 0) && (meanshiftwindow.width < 30) && (meanshiftwindow.height < 30) && (meanshiftwindow.height > 0))
+    {
         boolColor = determineContainerContent(currentFrame, meanshiftwindow);
         findMaxSeedPoint(luvCurFrame,meanshiftwindow,boolColor);
         //std::cout << "MEANSHIFT" << std::endl;
+        ffCamShiftRect = meanshiftwindow;
+        findFloodFillRect(currentFrame,maxSeedPoint,false);
     }
-
-    findFloodFillRect(currentFrame,maxSeedPoint);
+    else
+    {
+        //findMaxSeedPoint(luvCurFrame,camShiftRect,boolColor);
+        ffCamShiftRect = prevTrackingWindow;
+        //findFloodFillRect(currentFrame,maxSeedPoint,true);
+    }
 }
 
 void ourCamShift::findMaxSeedPoint(cv::Mat frame, cv::Rect window, bool returnedColor){
@@ -70,7 +75,6 @@ void ourCamShift::findMaxSeedPoint(cv::Mat frame, cv::Rect window, bool returned
             {
                 /* code */
             
-              
                if ( (frame.at<cv::Vec3b>(j,i)[0]>greenL) && (frame.at<cv::Vec3b>(j,i)[1]<greenU) )
                 {
                  
@@ -118,7 +122,6 @@ bool ourCamShift::determineContainerContent(cv::Mat frame, cv::Rect window){
                 //green
                 ++counterUnder;
             }
-
         }
     }
     //std::cout << "Counts on red: " << counterOver << " Counts on green: " << counterUnder << std::endl;
@@ -131,13 +134,31 @@ bool ourCamShift::determineContainerContent(cv::Mat frame, cv::Rect window){
     {
         color = 1;
     }
-
     return color;
 }
 
-void ourCamShift::findFloodFillRect(cv::Mat frame, cv::Point pt){
+void ourCamShift::findFloodFillRect(cv::Mat frame, cv::Point pt, bool overrule){
     ffImage = frame.clone();
+    cv::Rect ffCamShiftFloodRect;
+    cv::floodFill(ffImage,pt,0, &ffCamShiftFloodRect,cvScalarAll(60), cvScalarAll(60), 8 + (255 << 8)+cv::FLOODFILL_FIXED_RANGE);
 
-    cv::floodFill(ffImage,pt,0, &ffCamShiftRect,cvScalarAll(80), cvScalarAll(80), 8 + (255 << 8)+cv::FLOODFILL_FIXED_RANGE);
+    if ((ffCamShiftFloodRect.width > 0) && (ffCamShiftFloodRect.width < 30) && (ffCamShiftFloodRect.height > 0) && (ffCamShiftFloodRect.height < 30))
+    {
+        ffCamShiftRect = ffCamShiftFloodRect;
+    } else if(overrule)
+    {
+        ffCamShiftRect = ffCamShiftFloodRect;
+    }
+
+    if(ffCamShiftRect.width < 4)
+    {
+        ffCamShiftRect.width = ffCamShiftRect.width+1;
+        ffCamShiftRect.x = ffCamShiftRect.x-1;
+    }
+    if(ffCamShiftRect.height < 4)
+    {
+        ffCamShiftRect.height = ffCamShiftRect.height+1;
+        ffCamShiftRect.y = ffCamShiftRect.y-1;
+    }
 
 }

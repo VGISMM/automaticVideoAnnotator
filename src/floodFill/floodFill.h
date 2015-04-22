@@ -9,7 +9,7 @@ class FloodFill {
 public:
 	FloodFill();
 	void findFloodFillRect(cv::Mat frame, cv::Point pt);	
-	cv::vector<cv::Rect> allFloodFills;
+	std::vector<cv::Rect> allFloodFills;
 	bool areWeDoneHere=false;
 	
 private:
