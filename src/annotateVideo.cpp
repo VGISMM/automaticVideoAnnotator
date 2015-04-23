@@ -126,6 +126,14 @@ void trackAndAnnotate()
     for (int i = 0; i < previousAnnotiationRects.size(); ++i)
     {
         ourCamShift.trackTheObject(cleanImgLOIClone.clone(),previousImage,previousAnnotiationRects[i]);
+
+        //Draw white "candidate" rectangle, which later can be stored with 's' or ignored with 'i'
+        cv::rectangle(imgLOI,cv::Point(ourCamShift.ffCamShiftRect.x, ourCamShift.ffCamShiftRect.y),cv::Point(ourCamShift.ffCamShiftRect.x+(ourCamShift.ffCamShiftRect.width), ourCamShift.ffCamShiftRect.y+(ourCamShift.ffCamShiftRect.height)), cv::Scalar(255, 255, 255),1,1);
+    }
+
+    for (int i = 0; i < previousAnnotiationRects.size(); ++i)
+    {
+        ourCamShift.trackTheObject(cleanImgLOIClone.clone(),previousImage,previousAnnotiationRects[i]);
         // If camshift results x point start in (0,0), a more bold rectangle is drawn fore more attention. Else, we draw a purple rectangle to indicate which rectangle the user must decide whether to keep or ignore.
         if ( (ourCamShift.ffCamShiftRect.x==0) && (ourCamShift.ffCamShiftRect.y==0) )
         {
@@ -215,9 +223,12 @@ int main( int argc, const char** argv )
         imshow( "Main Window", imgLOI );
         
         cleanImgLOIClone = imgLOI.clone();
+        
+        /*
 		pngfilename << "../outputAnnotations/" << frameNumber << ".png";
 		pngPath = pngfilename.str();
 		imwrite(pngPath,cleanImgLOIClone);
+		*/
 
         if (!keepGoing && !first) // only enter if 
         {
