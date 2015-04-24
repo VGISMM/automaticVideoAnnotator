@@ -10,41 +10,40 @@
 #include <sstream>
 #include <string.h>
 
-/* Incude classes */
+// Include classes
 #include "zoomArea/zoomArea.h"
 #include "markArea/markArea.h"
 #include "floodFill/floodFill.h"
 #include "camShift/ourCamShift.h"
 
 //using namespace cv;
-//using namespace std;
+using namespace std;
 
 #define IMAGEWIDTH 1280
 #define IMAGEHEIGHT 960
 #define largestObjectWIDTH 200
 #define largestObjectHEIGHT 200
 
-cv::Mat image;
-
-
-
 bool leftBeforeRight = false;
-cv::Mat imgLOI,myOrgImageClone, previousImage;
+cv::Mat image, imgLOI, cleanImgLOIClone, previousImage;
 
-cv::vector<cv::Rect> currentAnnotiationRects;
-cv::vector<cv::Rect> previousAnnotiationRects;
+std::vector<cv::Rect> currentAnnotiationRects;
+std::vector<cv::Rect> previousAnnotiationRects;
+
+bool keepGoing = false;
+bool first = true;
 
 int frameNumber;
-cv::string annotationsPath;
+std::string annotationsPath;
 std::ofstream myfile;
-cv::string pngPath;
+std::string pngPath;
 
+std::stringstream pngfilename;
 char annotationString[100];
 char finalannotationString[200];
 char previousAnnotationString[100];
-cv::vector<cv::string> annotationStringVector; 
-cv::vector<cv::string> previousAnnotationStringVector; 
-
+std::vector<std::string> annotationStringVector; 
+std::vector<std::string> previousAnnotationStringVector; 
 
 int leftClickX, leftClickY, rightClickX, rightClickY;
 cv::Point leftClickPtr;
@@ -60,13 +59,10 @@ static void onMouse( int event, int x, int y, int, void *ptr)
     p->x = x;
     p->y = y;
 
-    
-    
     if(event == cv::EVENT_LBUTTONDOWN && (leftBeforeRight==false))
     {
         leftClickPtr = MarkArea.leftButtonClick(imgLOI,*p);
         leftBeforeRight = true;
-
     }
 
     else if((event == cv::EVENT_RBUTTONDOWN) && (leftBeforeRight==true) ) {
@@ -92,13 +88,10 @@ static void onMouse( int event, int x, int y, int, void *ptr)
                 
                 cv::rectangle(imgLOI,cv::Point(FloodFill.allFloodFills[0].x, FloodFill.allFloodFills[0].y),cv::Point(FloodFill.allFloodFills[0].x+(FloodFill.allFloodFills[0].width), FloodFill.allFloodFills[0].y+(FloodFill.allFloodFills[0].height)), cv::Scalar(0, 255, 0),1,1);
             }
-
             cv::imshow("Main Window", imgLOI);
-            
         }
     }
-    ZoomArea.createZoomAreaFrame(imgLOI,*p);
-    
+    ZoomArea.createZoomAreaFrame(imgLOI,*p);  
 }
 
 static void help()
@@ -115,9 +108,71 @@ static void help()
             "\tESC or q- quit the program\n"
             "\ta - Apply CAMSHIFT on previous rects in current frame. \n"
             "\ts - Save annotated \n"
-            "\ti - If area is not good. 'i' can be used for ignoring it.\n"
+            "\tz or i - If area is not good. 'z' or 'i' can be used for ignoring it.\n"
             "\td - Save to file, and proceed to next frame. \n";
 }
+
+void trackAndAnnotate()
+{
+	//ZoomArea ZoomArea;
+    ourCamShift ourCamShift;
+    //FloodFill FloodFill;
+
+    pngfilename << "../outputAnnotations/" << frameNumber << ".png";
+    pngPath = pngfilename.str();
+    imwrite(pngPath,cleanImgLOIClone);
+    //std::cout << "Frame: " << frameNumber << "saved!" << std::endl;
+
+    for (int i = 0; i < previousAnnotiationRects.size(); ++i)
+    {
+        ourCamShift.trackTheObject(cleanImgLOIClone.clone(),previousImage,previousAnnotiationRects[i]);
+
+        //Draw white "candidate" rectangle, which later can be stored with 's' or ignored with 'i'
+        cv::rectangle(imgLOI,cv::Point(ourCamShift.ffCamShiftRect.x, ourCamShift.ffCamShiftRect.y),cv::Point(ourCamShift.ffCamShiftRect.x+(ourCamShift.ffCamShiftRect.width), ourCamShift.ffCamShiftRect.y+(ourCamShift.ffCamShiftRect.height)), cv::Scalar(255, 255, 255),1,1);
+    }
+
+    for (int i = 0; i < previousAnnotiationRects.size(); ++i)
+    {
+        ourCamShift.trackTheObject(cleanImgLOIClone.clone(),previousImage,previousAnnotiationRects[i]);
+        // If camshift results x point start in (0,0), a more bold rectangle is drawn fore more attention. Else, we draw a purple rectangle to indicate which rectangle the user must decide whether to keep or ignore.
+        if ( (ourCamShift.ffCamShiftRect.x==0) && (ourCamShift.ffCamShiftRect.y==0) )
+        {
+            cv::rectangle(imgLOI,cv::Point(ourCamShift.ffCamShiftRect.x, ourCamShift.ffCamShiftRect.y),cv::Point(ourCamShift.ffCamShiftRect.x+(ourCamShift.ffCamShiftRect.width), ourCamShift.ffCamShiftRect.y+(ourCamShift.ffCamShiftRect.height)), cv::Scalar(255, 0, 255),5,1);
+        }
+        else
+        {
+            cv::rectangle(imgLOI,cv::Point(ourCamShift.ffCamShiftRect.x, ourCamShift.ffCamShiftRect.y),cv::Point(ourCamShift.ffCamShiftRect.x+(ourCamShift.ffCamShiftRect.width), ourCamShift.ffCamShiftRect.y+(ourCamShift.ffCamShiftRect.height)), cv::Scalar(255, 0, 255),1,1);
+        }
+        imshow( "Main Window", imgLOI );
+
+        char newk = cv::waitKey();
+        if (newk == 's')
+        {
+            cv::rectangle(imgLOI,cv::Point(ourCamShift.ffCamShiftRect.x, ourCamShift.ffCamShiftRect.y),cv::Point(ourCamShift.ffCamShiftRect.x+(ourCamShift.ffCamShiftRect.width), ourCamShift.ffCamShiftRect.y+(ourCamShift.ffCamShiftRect.height)), cv::Scalar(0, 255, 0),1,1);
+
+            if (ourCamShift.ffCamShiftRect.x < 2 || ourCamShift.ffCamShiftRect.x+ourCamShift.ffCamShiftRect.width > IMAGEWIDTH-1 || ourCamShift.ffCamShiftRect.y < 2 || ourCamShift.ffCamShiftRect.y+ourCamShift.ffCamShiftRect.height > IMAGEHEIGHT-1)
+            {
+                cv::rectangle(imgLOI,cv::Point(ourCamShift.ffCamShiftRect.x, ourCamShift.ffCamShiftRect.y),cv::Point(ourCamShift.ffCamShiftRect.x+(ourCamShift.ffCamShiftRect.width), ourCamShift.ffCamShiftRect.y+(ourCamShift.ffCamShiftRect.height)), cv::Scalar(0, 0, 0),5,1);
+                imshow( "Main Window", imgLOI ); 
+                std::cout << "Rect starts in on edge of frame, extra waitkey inserted to reannotate." << std::endl;
+                cv::waitKey();
+            }
+            currentAnnotiationRects.push_back(ourCamShift.ffCamShiftRect);                
+        }
+        if (newk == 'i' || newk == 'z'){
+            if (ourCamShift.ffCamShiftRect.x==0)
+            {
+                cv::rectangle(imgLOI,cv::Point(ourCamShift.ffCamShiftRect.x, ourCamShift.ffCamShiftRect.y),cv::Point(ourCamShift.ffCamShiftRect.x+(ourCamShift.ffCamShiftRect.width), ourCamShift.ffCamShiftRect.y+(ourCamShift.ffCamShiftRect.height)), cv::Scalar(0, 0, 0),5,1);
+            }
+            else
+            {
+                cv::rectangle(imgLOI,cv::Point(ourCamShift.ffCamShiftRect.x, ourCamShift.ffCamShiftRect.y),cv::Point(ourCamShift.ffCamShiftRect.x+(ourCamShift.ffCamShiftRect.width), ourCamShift.ffCamShiftRect.y+(ourCamShift.ffCamShiftRect.height)), cv::Scalar(0, 0, 0),1,1);
+            }
+        }
+        imshow( "Main Window", imgLOI );  
+    }
+}
+
 
 const char* keys =
 {
@@ -131,7 +186,7 @@ int main( int argc, const char** argv )
     std::cout << "Naming frames from: " << argv[2] << std::endl;
     frameNumber = atoi(argv[2]);
     std::stringstream annotationFilename;
-    annotationFilename << "outputAnnotations/annotationsFrom" << frameNumber << ".txt";
+    annotationFilename << "../outputAnnotations/annotationsFrom" << frameNumber << ".txt";
     annotationsPath = annotationFilename.str();
     myfile.open(annotationsPath);
 
@@ -143,8 +198,6 @@ int main( int argc, const char** argv )
     cv::namedWindow( "Main Window", CV_WINDOW_AUTOSIZE | CV_GUI_NORMAL );
     cv::Point mousePtr;
     cv::Point prevMousePtr;
-    
-
     cv::Mat frame, hsv, hue, mask, hist, histimg = cv::Mat::zeros(200, 320, CV_8UC3), backproj;
     
     ZoomArea ZoomArea;
@@ -152,9 +205,9 @@ int main( int argc, const char** argv )
     FloodFill FloodFill;
     bool paused = false;
     
+    capture.set(CV_CAP_PROP_POS_FRAMES,frameNumber);
     while(1)
     {
-
         currentAnnotiationRects.clear();
         capture >> image;
 
@@ -165,100 +218,75 @@ int main( int argc, const char** argv )
             std::cout << "Error loading the image" << std::endl;
             return -1; 
         }
-        myOrgImageClone = imgLOI.clone();
 
         setMouseCallback( "Main Window", onMouse, &mousePtr);
         imshow( "Main Window", imgLOI );
         
+        cleanImgLOIClone = imgLOI.clone();
+        
+        /*
+		pngfilename << "../outputAnnotations/" << frameNumber << ".png";
+		pngPath = pngfilename.str();
+		imwrite(pngPath,cleanImgLOIClone);
+		*/
+
+        if (!keepGoing && !first) // only enter if 
+        {
+        	first = false;
+        	//cout << "keepG " << keepGoing << endl;
+        	char k = cv::waitKey();
+	        if ( (k == 'q') || (k == 27) ) // push q or escape to quit.
+	        {
+	            break;
+	        }
+	        
+	        if ( k == 'd')
+	        {
+	            //std::cout << "Frame: " << frameNumber << "saved!" << std::endl;
+	            for (int i = 0; i < currentAnnotiationRects.size() ; ++i)
+	            {
+	                previousAnnotiationRects.push_back(currentAnnotiationRects[i]);
+	            }
+	            
+	        }
+	        else if ( k == 'a') 
+	        {
+	            trackAndAnnotate();
+	        }
+	        else
+	        {
+	        	cout << "unknown key "  << endl;
+	        }
+        }
+        else if(keepGoing)
+        {
+        	trackAndAnnotate();
+        	keepGoing = false;
+        }
 
 
-        char k = cv::waitKey();
-
-        if ( (k == 'q') || (k == 27) ) // push q or escape to quit.
+    	//cout << "proceed " << keepGoing << endl;
+        // waiting annotation to for preventing skipping to next image.
+        char proceed = cv::waitKey();
+        if (proceed == 'd')
+        {
+	            //std::cout << "Frame: " << frameNumber << "saved!" << std::endl;
+	            for (int i = 0; i < currentAnnotiationRects.size() ; ++i)
+	            {
+	                previousAnnotiationRects.push_back(currentAnnotiationRects[i]);
+	            }
+        }
+        else if (proceed == 'a' || proceed == 's')
+        {
+        	keepGoing = true;
+        }
+        else if ( (proceed == 'q') || (proceed == 27) ) // push q or escape to quit.
         {
             break;
         }
-        std::stringstream pngfilename;
-        if ( k == 'd')
-        {
-            pngfilename << "outputAnnotations/" << frameNumber << ".png";
-            pngPath = pngfilename.str();
-            imwrite(pngPath,myOrgImageClone);
-            std::cout << "Frame: " << frameNumber << "saved!" << std::endl;
-            
+        
 
-            for (int i = 0; i < currentAnnotiationRects.size() ; ++i)
-            {
-                previousAnnotiationRects.push_back(currentAnnotiationRects[i]);
-            }
-
-        }
-        else if ( k == 'a') {
-
-            pngfilename << "outputAnnotations/" << frameNumber << ".png";
-            pngPath = pngfilename.str();
-            imwrite(pngPath,myOrgImageClone);
-
-            std::cout << "Frame: " << frameNumber << "saved!" << std::endl;
-
-            for (int i = 0; i < previousAnnotiationRects.size(); ++i)
-            {
-                ourCamShift.trackTheObject(myOrgImageClone.clone(),previousImage,previousAnnotiationRects[i]);
-
-                //Draw white "candidate" rectangle, which later can be stored with 's' or ignored with 'i'
-                cv::rectangle(imgLOI,cv::Point(ourCamShift.ffCamShiftRect.x, ourCamShift.ffCamShiftRect.y),cv::Point(ourCamShift.ffCamShiftRect.x+(ourCamShift.ffCamShiftRect.width), ourCamShift.ffCamShiftRect.y+(ourCamShift.ffCamShiftRect.height)), cv::Scalar(255, 255, 255),1,1);
-            }
-
-            for (int i = 0; i < previousAnnotiationRects.size(); ++i)
-            {
-                ourCamShift.trackTheObject(myOrgImageClone.clone(),previousImage,previousAnnotiationRects[i]);
-                // If camshift results x point start in (0,0), a more bold rectangle is drawn fore more attention. Else, we draw a purple rectangle to indicate which rectangle the user must decide whether to keep or ignore.
-                if ( (ourCamShift.ffCamShiftRect.x==0) && (ourCamShift.ffCamShiftRect.y==0) )
-                {
-                    cv::rectangle(imgLOI,cv::Point(ourCamShift.ffCamShiftRect.x, ourCamShift.ffCamShiftRect.y),cv::Point(ourCamShift.ffCamShiftRect.x+(ourCamShift.ffCamShiftRect.width), ourCamShift.ffCamShiftRect.y+(ourCamShift.ffCamShiftRect.height)), cv::Scalar(255, 0, 255),5,1);
-                }else{
-                    cv::rectangle(imgLOI,cv::Point(ourCamShift.ffCamShiftRect.x, ourCamShift.ffCamShiftRect.y),cv::Point(ourCamShift.ffCamShiftRect.x+(ourCamShift.ffCamShiftRect.width), ourCamShift.ffCamShiftRect.y+(ourCamShift.ffCamShiftRect.height)), cv::Scalar(255, 0, 255),1,1);
-                
-                }
-
-                imshow( "Main Window", imgLOI );
-
-                char newk = cv::waitKey();
-                if (newk == 's')
-                {
-                    cv::rectangle(imgLOI,cv::Point(ourCamShift.ffCamShiftRect.x, ourCamShift.ffCamShiftRect.y),cv::Point(ourCamShift.ffCamShiftRect.x+(ourCamShift.ffCamShiftRect.width), ourCamShift.ffCamShiftRect.y+(ourCamShift.ffCamShiftRect.height)), cv::Scalar(0, 255, 0),1,1);
-
-                    if (ourCamShift.ffCamShiftRect.x==0)
-                    {
-                        cv::rectangle(imgLOI,cv::Point(ourCamShift.ffCamShiftRect.x, ourCamShift.ffCamShiftRect.y),cv::Point(ourCamShift.ffCamShiftRect.x+(ourCamShift.ffCamShiftRect.width), ourCamShift.ffCamShiftRect.y+(ourCamShift.ffCamShiftRect.height)), cv::Scalar(0, 0, 0),5,1);
-                        cv::waitKey();
-                        std::cout << "Rect starts in 0, extra waitkey inserted to reannoate." << std::endl;
-                    }
-
-                    currentAnnotiationRects.push_back(ourCamShift.ffCamShiftRect);
-                                   
-                }
-                if (newk == 'i'){
-                    if (ourCamShift.ffCamShiftRect.x==0)
-                    {
-                        cv::rectangle(imgLOI,cv::Point(ourCamShift.ffCamShiftRect.x, ourCamShift.ffCamShiftRect.y),cv::Point(ourCamShift.ffCamShiftRect.x+(ourCamShift.ffCamShiftRect.width), ourCamShift.ffCamShiftRect.y+(ourCamShift.ffCamShiftRect.height)), cv::Scalar(0, 0, 0),5,1);
-                    }
-                    else{
-                        cv::rectangle(imgLOI,cv::Point(ourCamShift.ffCamShiftRect.x, ourCamShift.ffCamShiftRect.y),cv::Point(ourCamShift.ffCamShiftRect.x+(ourCamShift.ffCamShiftRect.width), ourCamShift.ffCamShiftRect.y+(ourCamShift.ffCamShiftRect.height)), cv::Scalar(0, 0, 0),1,1);
-
-                    }
-                }
-                imshow( "Main Window", imgLOI );  
-  
-            }
-
-            // Guard for prevention skipping to next image.
-            char proceed = cv::waitKey();
-            if (proceed == 'd')
-            {
-            }
-
-        }
+        
 
         previousAnnotiationRects.clear();
         for (int i = 0; i < currentAnnotiationRects.size(); ++i)
@@ -275,22 +303,16 @@ int main( int argc, const char** argv )
         {
             sprintf(previousAnnotationString,"%lu%s",previousAnnotiationRects.size(),annotationString);
             sprintf(finalannotationString,"%i\t%lu%s",frameNumber,previousAnnotiationRects.size(),annotationString);
-            
             std::cout << "String saved to file: " << finalannotationString << std::endl;
-
             myfile << finalannotationString << std::endl;
             memset(finalannotationString, 0, sizeof(finalannotationString));
             memset(annotationString, 0, sizeof(annotationString)); 
         }
-        
-
-        std::cout << "Frame just annotated was: " << frameNumber << std::endl;
+        std::cout << "Annotated frame was: " << frameNumber << std::endl;
         frameNumber++;
-        previousImage = myOrgImageClone.clone();
+        previousImage = cleanImgLOIClone.clone();
         currentAnnotiationRects.clear();
-
     }
-
     myfile.close();
     return 0;
 }

@@ -13,13 +13,12 @@ public:
 	ourCamShift();
   	void trackTheObject(cv::Mat currentFrame, cv::Mat previousFrame, cv::Rect prevTrackingWindow);
 
-  	
   	cv::Point maxSeedPoint;
   	cv::Rect ffCamShiftRect;
 
   	//void init();
 private:
-	void findFloodFillRect(cv::Mat frame, cv::Point pt);
+	void findFloodFillRect(cv::Mat frame, cv::Point pt, bool overrule);
 	bool determineContainerContent(cv::Mat frame, cv::Rect window);
 	void findMaxSeedPoint(cv::Mat frame, cv::Rect window, bool returnedColor);
 	cv::Mat luvFrame,mask; 
