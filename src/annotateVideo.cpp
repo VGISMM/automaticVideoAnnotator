@@ -280,6 +280,10 @@ int main( int argc, const char** argv )
         {
         	keepGoing = true;
         }
+        else if ( (proceed == 'q') || (proceed == 27) ) // push q or escape to quit.
+        {
+            break;
+        }
         
 
         
