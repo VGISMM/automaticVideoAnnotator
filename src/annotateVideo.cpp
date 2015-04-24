@@ -32,6 +32,7 @@ std::vector<cv::Rect> previousAnnotiationRects;
 
 bool keepGoing = false;
 bool first = true;
+bool usePrevious = false;
 
 int frameNumber;
 std::string annotationsPath;
@@ -169,10 +170,20 @@ void trackAndAnnotate()
                 cv::rectangle(imgLOI,cv::Point(ourCamShift.ffCamShiftRect.x, ourCamShift.ffCamShiftRect.y),cv::Point(ourCamShift.ffCamShiftRect.x+(ourCamShift.ffCamShiftRect.width), ourCamShift.ffCamShiftRect.y+(ourCamShift.ffCamShiftRect.height)), cv::Scalar(0, 0, 0),1,1);
             }
         }
-        imshow( "Main Window", imgLOI );  
+        //imshow( "Main Window", imgLOI );  
     }
 }
 
+void usePreviousAnnotations()
+{
+    for (int i = 0; i < previousAnnotiationRects.size(); ++i)
+    {
+        //Draw white "candidate" rectangle, which later can be stored with 's' or ignored with 'i'
+
+        cv::rectangle(imgLOI,cv::Point(previousAnnotiationRects[i].x, previousAnnotiationRects[i].y),cv::Point(previousAnnotiationRects[i].x+(previousAnnotiationRects[i].width), previousAnnotiationRects[i].y+(previousAnnotiationRects[i].height)), cv::Scalar(0, 255, 0),1,1);
+        currentAnnotiationRects.push_back(previousAnnotiationRects[i]);
+    }
+}
 
 const char* keys =
 {
@@ -230,7 +241,7 @@ int main( int argc, const char** argv )
 		imwrite(pngPath,cleanImgLOIClone);
 		*/
 
-        if (!keepGoing && !first) // only enter if 
+        if (!keepGoing && !first && !usePrevious) // only enter if 
         {
         	first = false;
         	//cout << "keepG " << keepGoing << endl;
@@ -259,72 +270,49 @@ int main( int argc, const char** argv )
 	        }
         }
         else if(keepGoing)
-        {
+        {   
         	trackAndAnnotate();
         	keepGoing = false;
         }
-
-
+        else if(usePrevious)
+        {
+            // uncomment if you want a clean preview
+            //imshow( "Main Window", imgLOI );
+            //cv::waitKey(); 
+            usePreviousAnnotations();
+            usePrevious = false;
+            
+        }
+        imshow( "Main Window", imgLOI );
     	//cout << "proceed " << keepGoing << endl;
         // waiting annotation to for preventing skipping to next image.
         char proceed = cv::waitKey();
         if (proceed == 'd')
         {
-	            //std::cout << "Frame: " << frameNumber << "saved!" << std::endl;
-	            for (int i = 0; i < currentAnnotiationRects.size() ; ++i)
-	            {
-	                previousAnnotiationRects.push_back(currentAnnotiationRects[i]);
-	            }
+            //std::cout << "Frame: " << frameNumber << "saved!" << std::endl;
+            for (int i = 0; i < currentAnnotiationRects.size() ; ++i)
+            {
+                previousAnnotiationRects.push_back(currentAnnotiationRects[i]);
+            }
         }
         else if (proceed == 'a' || proceed == 's')
         {
         	keepGoing = true;
         }
+        else if ( proceed == 'c') 
+        {    
+            usePrevious = true;
+        }
         else if ( (proceed == 'q') || (proceed == 27) ) // push q or escape to quit.
         {
             break;
         }
-        else if ( proceed == 'c') {
-            pngfilename << "outputAnnotations/" << frameNumber << ".png";
-            pngPath = pngfilename.str();
-            //imwrite(pngPath,myOrgImageClone);
-
-            std::cout << "Frame: " << frameNumber << "saved!" << std::endl;
-
-            for (int i = 0; i < previousAnnotiationRects.size(); ++i)
-            {
-                cv::rectangle(imgLOI,cv::Point(previousAnnotiationRects[i].x, previousAnnotiationRects[i].y),cv::Point(previousAnnotiationRects[i].x+(previousAnnotiationRects[i].width), previousAnnotiationRects[i].y+(previousAnnotiationRects[i].height)), cv::Scalar(255, 255, 255),1,1);
-            }
-
-            for (int i = 0; i < previousAnnotiationRects.size(); ++i)
-            {
-                //Draw white "candidate" rectangle, which later can be stored with 's' or ignored with 'i'
-                cv::rectangle(imgLOI,cv::Point(previousAnnotiationRects[i].x, previousAnnotiationRects[i].y),cv::Point(previousAnnotiationRects[i].x+(previousAnnotiationRects[i].width), previousAnnotiationRects[i].y+(previousAnnotiationRects[i].height)), cv::Scalar(255, 0, 255),1,1);
-                imshow( "Main Window", imgLOI );
-                char previousAnnotKey = cv::waitKey();
-                if (previousAnnotKey == 's')
-                {
-                    cv::rectangle(imgLOI,cv::Point(previousAnnotiationRects[i].x, previousAnnotiationRects[i].y),cv::Point(previousAnnotiationRects[i].x+(previousAnnotiationRects[i].width), previousAnnotiationRects[i].y+(previousAnnotiationRects[i].height)), cv::Scalar(0, 255, 0),1,1);
-                    currentAnnotiationRects.push_back(previousAnnotiationRects[i]);
-                }
-                if (previousAnnotKey == 'i')
-                {
-                    cv::rectangle(imgLOI,cv::Point(previousAnnotiationRects[i].x, previousAnnotiationRects[i].y),cv::Point(previousAnnotiationRects[i].x+(previousAnnotiationRects[i].width), previousAnnotiationRects[i].y+(previousAnnotiationRects[i].height)), cv::Scalar(0, 0, 0),1,1);
-                }
-
-                imshow( "Main Window", imgLOI );
-
-            }
-            keepGoing = true;
-            char proceedd = cv::waitKey();
-            if (proceedd == 'd')
-            {
-            }
-            
-
+        else
+        {
+            cout << "unknown key "  << endl;
         }
         
-
+        imshow( "Main Window", imgLOI );
         
 
         previousAnnotiationRects.clear();
