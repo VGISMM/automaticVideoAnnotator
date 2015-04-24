@@ -284,6 +284,45 @@ int main( int argc, const char** argv )
         {
             break;
         }
+        else if ( proceed == 'c') {
+            pngfilename << "outputAnnotations/" << frameNumber << ".png";
+            pngPath = pngfilename.str();
+            //imwrite(pngPath,myOrgImageClone);
+
+            std::cout << "Frame: " << frameNumber << "saved!" << std::endl;
+
+            for (int i = 0; i < previousAnnotiationRects.size(); ++i)
+            {
+                cv::rectangle(imgLOI,cv::Point(previousAnnotiationRects[i].x, previousAnnotiationRects[i].y),cv::Point(previousAnnotiationRects[i].x+(previousAnnotiationRects[i].width), previousAnnotiationRects[i].y+(previousAnnotiationRects[i].height)), cv::Scalar(255, 255, 255),1,1);
+            }
+
+            for (int i = 0; i < previousAnnotiationRects.size(); ++i)
+            {
+                //Draw white "candidate" rectangle, which later can be stored with 's' or ignored with 'i'
+                cv::rectangle(imgLOI,cv::Point(previousAnnotiationRects[i].x, previousAnnotiationRects[i].y),cv::Point(previousAnnotiationRects[i].x+(previousAnnotiationRects[i].width), previousAnnotiationRects[i].y+(previousAnnotiationRects[i].height)), cv::Scalar(255, 0, 255),1,1);
+                imshow( "Main Window", imgLOI );
+                char previousAnnotKey = cv::waitKey();
+                if (previousAnnotKey == 's')
+                {
+                    cv::rectangle(imgLOI,cv::Point(previousAnnotiationRects[i].x, previousAnnotiationRects[i].y),cv::Point(previousAnnotiationRects[i].x+(previousAnnotiationRects[i].width), previousAnnotiationRects[i].y+(previousAnnotiationRects[i].height)), cv::Scalar(0, 255, 0),1,1);
+                    currentAnnotiationRects.push_back(previousAnnotiationRects[i]);
+                }
+                if (previousAnnotKey == 'i')
+                {
+                    cv::rectangle(imgLOI,cv::Point(previousAnnotiationRects[i].x, previousAnnotiationRects[i].y),cv::Point(previousAnnotiationRects[i].x+(previousAnnotiationRects[i].width), previousAnnotiationRects[i].y+(previousAnnotiationRects[i].height)), cv::Scalar(0, 0, 0),1,1);
+                }
+
+                imshow( "Main Window", imgLOI );
+
+            }
+            keepGoing = true;
+            char proceedd = cv::waitKey();
+            if (proceedd == 'd')
+            {
+            }
+            
+
+        }
         
 
         
