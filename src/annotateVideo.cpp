@@ -107,8 +107,7 @@ static void help()
 
     std::cout << "\n\nHot keys: \n"
             "\tESC or q- quit the program\n"
-            "\ta - Apply CAMSHIFT on previous rects in current frame. \n"
-            "\ts - Save annotated \n"
+            "\ts - Save annotated and Apply CAMSHIFT on previous rects in current frame. \n"
             "\tz or i - If area is not good. 'z' or 'i' can be used for ignoring it.\n"
             "\td - Save to file, and proceed to next frame. \n";
 }
